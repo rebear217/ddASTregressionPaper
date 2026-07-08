@@ -1,10 +1,9 @@
 % This script plots all figures in the paper which can be done
-% by un-commenting a line associated with that figure number and
-% running that section: (be sure to be in the right directory)
+% by running the file one section at a time: (and do be sure to be in the right Matlab directory)
 
 % This must be installed for MCMC codes to work:
 % https://mjlaine.github.io/mcmcstat/
-% Beware that this toolbox overwrites the "boxplot" command.
+% Do beware that this toolbox overwrites the "boxplot" command.
 
 clearvars
 close all
