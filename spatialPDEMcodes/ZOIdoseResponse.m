@@ -1,4 +1,6 @@
-function output = ZOIdoseReponse(input)
+function output = ZOIdoseResponse(input)
+
+    close all
 
     calc = 1;
     if nargin > 0
@@ -19,14 +21,11 @@ function output = ZOIdoseReponse(input)
         calc = 0;
         output = input;
     end
-
-    close all
-    clc
     
     if calc
         option = 1;
         Nframes = 25;
-        T = 20;
+        T = 12;
         parameters = setGlobalParameters();
         N = parameters.N;
         dh = 1/(N-1);
@@ -71,16 +70,20 @@ function output = ZOIdoseReponse(input)
         output.option = option;
     end
 
+    figure(1)
+    set(1,'pos',[686         639        450         393])
+
     figure(2)
     set(2,'pos',[686         639        450         393])
 
-    figure(1)
-    set(1,'pos',[686         639        910         393])
+    figure(3)
+    set(3,'pos',[686         639        450         393])
+
     
-    subplot(1,2,1)
+    figure(1)
     semilogx(A0s,popDensity,'-k','LineWidth',3,'DisplayName',['dose response @T=',num2str(T),'h'])
     xlabel('antibiotic dose (\mug/mL)')
-    ylabel('total bacterial density (OD)')
+    ylabel('total bacterial density (integrated S+R)')
     axis tight
     hold on
     C = colororder;
@@ -89,8 +92,8 @@ function output = ZOIdoseReponse(input)
         J = 34*(j+3);
         col = C(j,:);
     
-        subplot(1,2,2)
-        plot(fliplr(Bs(J,:)),'color',col,'DisplayName',[num2str(j),': dose ',num2str(A0s(J),2),'\mug/mL'],'LineWidth',2);        
+        figure(2)
+        plot(fliplr(Bs(J,:)),'color',col,'DisplayName',[num2str(j),': dose ',num2str(A0s(J),2),'\mug/mL'],'LineWidth',3);        
         hold on
 
         legend('boxoff');
@@ -99,14 +102,14 @@ function output = ZOIdoseReponse(input)
         ylim([0 0.8])    
         set(gca,'Xtick',[1,N])
         set(gca,'Xticklabels',{'drug source','least drug'})
-        ylabel('population density (OD)')    
+        ylabel('bacterial density (S+R)')    
     
-        subplot(1,2,1)
+        figure(1)
         plot(A0s(J),popDensity(J),'.','markersize',44,'color',col,'HandleVisibility','off')
         text(A0s(J),popDensity(J)*1.2,num2str(j))    
     end
 
-    subplot(1,2,1)
+    figure(1)
     yl = ylim;
     ylim([0 yl(2)])
     set(gca,'Xtick',[0.01,0.1,1,10])
@@ -127,9 +130,12 @@ function output = ZOIdoseReponse(input)
     legend('boxoff')
     %}
 
-    exportgraphics(gcf,['./figures/spatialModelDoseResponse',num2str(T),'.PDF'])
-
+    figure(1)
+    exportgraphics(gcf,['./figures/spatialModelDoseResponse',num2str(T),'A.PDF'])
     figure(2)
+    exportgraphics(gcf,['./figures/spatialModelDoseResponse',num2str(T),'B.PDF'])
+
+    figure(3)
     j = 2;
     J = 34*(j+3);
     plot(fliplr(Ss(J,:)),'-','DisplayName',['S @dose ',num2str(A0s(J),2),'\mug/mL, T = ',num2str(T),'h'],'LineWidth',3);
@@ -142,7 +148,7 @@ function output = ZOIdoseReponse(input)
     ylim([0 0.8])    
     set(gca,'Xtick',[1,N])
     set(gca,'Xticklabels',{'drug source','least drug'})
-    ylabel('population density (OD)')       
+    ylabel('subpopulation densities')       
     exportgraphics(gcf,['./figures/spatialModelDoseResponse2-',num2str(T),'.PDF'])
 end
 

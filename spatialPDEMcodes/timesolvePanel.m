@@ -44,7 +44,7 @@ function output = timesolvePanel(input)
         
         rspace = rspace(:);
 
-        disp(A0)
+        %disp(A0)
         initialCondition = ic;
         initialCondition(2*N+1:3*N) = initialCondition(2*N+1:3*N) * A0;
         
@@ -54,6 +54,10 @@ function output = timesolvePanel(input)
         A = outState(2*N+1:3*N);
         C = outState(3*N+1:4*N);
         B = S+R;
+
+        % using: int f(x,y)dxdy = int f(r cos(theta),r sin(theta) rdr dtheta
+        % = 2 pi int F(r) rdr
+        %popDensity = 2*pi*trapz(B(:).*rspace)*dh;
         popDensity = 2*pi*sum(B(:).*rspace)*dh;
     
         output.A0 = A0;
@@ -69,6 +73,7 @@ function output = timesolvePanel(input)
         output.parameters = parameters;
         output.Nframes = Nframes;
         output.option = option;
+        output.rspace = rspace;
     end
 
     figure(2)
@@ -88,7 +93,8 @@ function output = timesolvePanel(input)
     ylim([0 1])    
     set(gca,'Xtick',[1,N])
     set(gca,'Xticklabels',{'drug source','least drug'})
-    ylabel('population density (OD)')       
+    ylabel('bacterial density')
+    title(['ddAST time T = ',num2str(T),'h'])
     exportgraphics(gcf,['./figures/spatialModelDoseResponse2-',num2str(T),'.PDF'])
 end
 

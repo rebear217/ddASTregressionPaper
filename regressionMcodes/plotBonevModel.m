@@ -1,86 +1,73 @@
-clear all
+%clear all
 close all
 clc
 
-%%  data from literature
-
-%Micrococcus luteus (ATCC 10240) and nisin
-%data taken from https://pmc.ncbi.nlm.nih.gov/articles/PMC4576963/pdf/fsn30003-0394.pdf
-%Figure 7 (see legend of A-J)
-
-%2 very small non-zero values have been added to 0 in the last 2 entries to
-%simplify the code for the Jacknife fits:
-
-%the last of these is not used in any of the datafits...
-
-conc = [125 75 50 25 18.75 12.5 6.25 2.5 1.25 0.625];
-zoi = [10.7 10.5 10.3 9.5 9 8 6.5 4 0.0001 0.000001];
-
-R = 0:0.01:12;
-
+JACK = [0.2 0.5 0.2];
 bonevF = @(p,r)p(1).*exp(-r.^2*p(2));
 
-%%
+%% get data from literature
+
+[conc,zoi,R] = defineMicrococcusNisinData();
+disp('Figure 3A')
 
 figure(1)
-
-semilogx(conc,zoi,'.k','markersize',34,'DisplayName','ZoI data')
+semilogx(conc,zoi,'.k','markersize',38,'DisplayName','ZoI data')
 hold on
+
 b0 = [1 0];
+weights = @(yhat) 1./(abs(yhat).^2);
 
-weights = @(yhat) 1./(1 + abs(yhat).^2);
 %weights = @(yhat) ones(size(yhat));
-
-fit2 = fitnlm(zoi(3:end-2),conc(3:end-2),bonevF,b0,'Weights',weights)
+fit2 = fitnlm(zoi(1:end-2),conc(1:end-2),bonevF,b0,'Weights',weights)
 
 M = 1;
-
 for j = M:9
-    Z = setdiff(zoi(M:end-1),zoi(j));
-    C = setdiff(conc(M:end-1),conc(j));
+    Z = setdiff(zoi(M:end-2),zoi(j));
+    C = setdiff(conc(M:end-2),conc(j));
     fit0 = fitnlm(Z,C,bonevF,fit2.Coefficients.Estimate,'Weights',weights);   
     if j == M
-        plot(fit0.feval(R),R,'-','DisplayName','Jacknife fits','linewidth',2,'color',[1 1 1]*0.7)
+        plot(fit0.feval(R),R,'-','DisplayName','Jacknife frequentist fits','linewidth',2,'color',JACK)
     else
-        plot(fit0.feval(R),R,'-','linewidth',2,'color',[1 1 1]*0.7,'HandleVisibility','off')
+        plot(fit0.feval(R),R,'-','linewidth',2,'color',JACK,'HandleVisibility','off')
     end
 end
 
 MIC = abs(fit2.Coefficients.Estimate(1));
 
 adjR2 = fit2.Rsquared.Adjusted;
-plot(fit2.feval(R),R,'-k','DisplayName',['Bonev fit (adj R^2\approx',num2str(adjR2),')'],'linewidth',3)
+plot(fit2.feval(R),R,'-k','DisplayName',['Bonev frequentist fit (adj R^2\approx',num2str(adjR2,3),')'],'linewidth',3)
 
 semilogx(conc,zoi,'.k','markersize',34,'HandleVisibility','off')
-text(MIC,0.4,num2str(MIC));
+text(20,3,['MIC\approx',num2str(MIC,3),'\mug/mL']);
 
 %semilogx(conc(1:2),zoi(1:2),'ok','markersize',14,'DisplayName','excised data','linewidth',1)
 set(gca,'Ytick',0:1:max(R))
 
+W1 = conc(end);
+W2 = conc(end-1);
+plot([W1,W2],[0,0],'-k','linewidth',6,'DisplayName','MIC ground truth (W)');
+text(0.8,0.5,'W','FontSize',22);
+
+MMSEMmicroNisinBonevF = MCMCupdatePointEstimates(conc(1:end-2),zoi(1:end-2),bonevF,fit2.Coefficients.Estimate,weights);
+
 ylabel('r (mm)')
 xlabel('antibiotic dose (\mug/mL)')
-legend('Location','southeast')
+legend('Location','northwest')
 axis tight
 xlim([0 150])
 ylim([0 max(R)])
 
-%% data from literature
+%% get data from literature
 
-%data taken from
-%https://pmc.ncbi.nlm.nih.gov/articles/PMC546645/pdf/applmicro00228-0032.pdf
-%PAP is unclear (not stated in paper): Bacillus subtilis or Sarcina lutea?
-%(Table 2)
+[conc,zoi,R] = defineSarcinaCloxData();
+disp('Figure 2A')
 
-conc = [3 6 12 24 48];
-zoi = [11.68 16.62 20.96 24.86 28.21];
-R = 0:0.01:32;
-
-fit = fitnlm(zoi,conc,bonevF,[1 0],'Weights',weights)
+fit = fitnlm(zoi,conc,bonevF,b0,'Weights',weights)
 
 figure(2)
-
 semilogx(conc,zoi,'.k','markersize',38,'DisplayName','ZoI data')
 hold on
+
 set(gca,'Ytick',0:5:max(R))
 
 for j = 1:5
@@ -88,29 +75,34 @@ for j = 1:5
     C = setdiff(conc,conc(j));
     fitJ = fitnlm(Z,C,bonevF,fit.Coefficients.Estimate,'Weights',weights);   
     if j == 1
-        plot(fitJ.feval(R),R,'-','DisplayName','Jacknife fits','linewidth',2,'color',[1 1 1]*0.7)
+        plot(fitJ.feval(R),R,'-','DisplayName','Jacknife frequentist fits','linewidth',2,'color',JACK)
     else
-        plot(fitJ.feval(R),R,'-','linewidth',2,'color',[1 1 1]*0.7,'HandleVisibility','off')
+        plot(fitJ.feval(R),R,'-','linewidth',2,'color',JACK,'HandleVisibility','off')
     end
 end
 
 adjR2 = fit.Rsquared.Adjusted;
-plot(fit.feval(R),R,'-k','DisplayName',['Bonev fit (adj R^2\approx',num2str(adjR2),')'],'linewidth',3)
+plot(fit.feval(R),R,'-k','DisplayName',['Bonev frequentist fit (adj R^2\approx',num2str(adjR2,3),')'],'linewidth',3)
 
 semilogx(conc,zoi,'.k','markersize',34,'HandleVisibility','off')
 MIC = abs(fit.Coefficients.Estimate(1));
-text(MIC,0.8,num2str(MIC));
+text(20,5,['MIC\approx',num2str(MIC,3),'\mug/mL']);
+
+MMSEMsarcinaCloxBonevF = MCMCupdatePointEstimates(conc,zoi,bonevF,fit.Coefficients.Estimate,weights);
 
 ylabel('r (mm)')
 xlabel('antibiotic dose (\mug/mL)')
-legend('Location','southeast')
+legend('Location','northwest')
 axis tight
 xlim([0.9 100])
 ylim([0 max(R)])
 
 %%
 
-figure(1)
-exportgraphics(gcf,'./figures/Micrococcus_luteus_bonev.pdf')
-figure(2)
-exportgraphics(gcf,'./figures/Bacillus_subtilis_bonev.pdf')
+plotON = 1;
+if plotON
+    figure(1)
+    exportgraphics(gcf,'./figures/Micrococcus_luteus_bonev.pdf')
+    figure(2)
+    exportgraphics(gcf,'./figures/Bacillus_subtilis_bonev.pdf')
+end

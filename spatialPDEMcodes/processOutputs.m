@@ -1,11 +1,21 @@
-function [sl,sl2] = processOutputs(inputs,modelflag)
+function [sl,sl2,TD] = processOutputs(inputs,modelflag,plotflag,ls,M,N)
+
+if nargin < 4
+    ls = '--';
+    M = 1;
+    N = 100;
+end
+
+TD = [];
 
 figure(1)
 set(1,'pos',[1897         475         579         463])
-N = 100;
 
 if nargin < 2
     modelflag = 0;
+end
+if nargin < 3
+    plotflag = 1;
 end
 
 switch modelflag
@@ -16,65 +26,77 @@ switch modelflag
         p0 = [8.4 0.86 0.13 0.23 -0.9];
         fitLab = 'ExpInt';
     case 3
-        p0 = [1 0.66 17.2 0.23 -0.9];
+        p0 = [2 0.3 1.5 0.23 0.9];
         fitLab = 'Radical Exp';
     case 4
-        p0 = [1 0.66 17.2 -4.7];        
+        p0 = ones(size([1 0.66 17.2 -4.7]));        
         fitLab = 'Bonev';
 end
 
+weight = @(y)(abs(y)).^(-2);
+
 for j = 1:length(inputs)
+    
     input = inputs{j};
 
     A0s = input.A0s;
     popDensity = input.popDensity;
     T = input.T;
+    %N = length(A0s);
 
-    sl = semilogx(A0s,popDensity,'-','LineWidth',2,'DisplayName',['T: ',num2str(T),'h'],'HandleVisibility','off');
+    if plotflag
+        sl = semilogx(A0s,popDensity,ls,'LineWidth',3,'DisplayName',...
+            ['T: ',num2str(T),'h dose response data']);
+        hold on
+        TD = plot(A0s(M),popDensity(M),'.k','DisplayName','training data start-end','markersize',50);
+        plot(A0s(N),popDensity(N),'.k','Handlevisibility','off','markersize',50);        
+    else
+        sl = [];
+    end
     hold on
+    popSize = popDensity(M:N);
+    ps = 0.000:1e-4:1.3*max(popSize);
     if modelflag > 0
-        %popSize = sqrt(popDensity(1:N));
-
-        popSize = popDensity(1:N);
-        fitDR = fitnlm(popSize,A0s(1:N),@(par,Pop)DR(par,Pop,modelflag),p0)
-        p = fitDR.Coefficients.Estimate;
-        ps = 0.1:1e-4:1.02*max(popSize);
-        sl2 = plot(fitDR.feval(ps),ps,'-','DisplayName',[fitLab,' fit'],'LineWidth',3);
+        if modelflag < 4
+            fitDR = fitnlm(popSize,A0s(M:N),@(par,Pop)DR(par,Pop,modelflag),p0,'Weights',weight)
+            sl2 = plot(fitDR.feval(ps),ps,'-','DisplayName',...
+                [fitLab,' fit (adj R^2\approx ',num2str(fitDR.Rsquared.Adjusted,3),')'],'LineWidth',3);
+            %p = fitDR.Coefficients.Estimate;
+        else
+            fitDR = fitlm(log(A0s(M:N)),popSize,'Weights',weight(A0s(M:N)))
+            sl2 = plot(A0s,fitDR.feval(log(A0s)),'-','DisplayName',...
+                [fitLab,' fit (adj R^2\approx ',num2str(fitDR.Rsquared.Adjusted,3),')'],'LineWidth',3);            
+        end
     end
 end
 
 axis tight
 xlabel('antibiotic dose (\mug/mL)')
-ylabel('total bacterial density (OD)')
+ylabel('total bacterial density (integrated S+R)')
 legend('boxoff')    
 legend('location','northeast')
-
+xlim([A0s(1) A0s(end)])
 end
 
 function Ac = DR(p,popSize,flag)
     %Ac = p(1) - Z(p(2:end),popSize,flag);
-
     Ac = Z(p(3:end),p(2)*abs(p(1)-popSize).^(1/2),flag);
 end
 
 function z = Z(p,r,flag)
 
     if flag == 1
-        logF = p(3) + p(1)*exp((-1 + (1+p(2)*r.^2).^(1/2))/2 + ...
+        z = p(3) + p(1)*exp((-1 + (1+p(2)*r.^2).^(1/2))/2 + ...
             log(((-1 + (1+p(2)*r.^2).^(1/2))))/2 + ...
             (p(2)/2)*r.^2./(-1 + (1+p(2)*r.^2).^(1/2)));
-        z = logF;
         %b0F = [0.03 0.4 1.75];
     elseif flag == 2
-        fexpint = p(3) + p(1) ./ expint(abs(p(2))*r.^2);
-        z = fexpint;
+        z = p(3) + p(1) ./ expint(abs(p(2))*r.^2);
         %b0ei = [0.5 0.02 1];
     elseif flag == 3
-        fexpint = p(3) + p(1) .* exp(sqrt(1+abs(p(2))*r.^2)).*(-1 + sqrt(1+abs(p(2))*r.^2));
-        z = fexpint;        
+        z = p(1) + p(3)*exp(sqrt(1+abs(p(2)).*r.^2 )) .* ( -1 + sqrt(1+abs(p(2))*r.^2) );
     else
-        bonevF = p(2)*exp(-r.^2*(p(1)));    
-        z = bonevF;
+        z = p(2)*exp(-r.^2*(p(1)));    
         %b0b = [1.3 -0.03];
     end
 

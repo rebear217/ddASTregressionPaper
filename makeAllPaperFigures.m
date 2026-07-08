@@ -17,47 +17,43 @@ clc
 % This may be needed:
 cd('regressionMcodes/')
 
-%%
-
-% Figures 2&3A
+%% Figures 2A&3A
 plotBonevModel;
 
-%%
-
-% Figures 2&3B
+%% Figures 2B&3B
 plotExpIntModel;
 
-%%
-
-% Figures 2&3C
+%% Figures 2C&3C
 plotNewLogModel;
 
-%%
-
-% Figures 2&3D
+%% Figures 2D&3D
+% the 3 sections above must be run first before this will work:
 plotFit3;
 
-%% Figure 4A-D
-
-plotNonConvexData;
-
-%% Figure 5A-F: run all of these separately
-
-close all
-bonevMCMC;
-
-%OR:
-%close all
-%expintMCMC;
-
-%close all
-%newlogMCMC;
-
-% To test they work, open "MCMCanalysis.m" and change the line
+%% Figure 4A
+% To test this works, open "MCMCanalysis.m" and change the line
 % options.nsimu = 200000; to something with a smaller value, like...
 % options.nsimu = 2000;
 
-%% Figure 6A-J
+bonevMCMC;
+
+%% Figure 4B
+
+expintMCMC;
+
+%% Figure 4C
+
+newlogMCMC;
+
+%% Figure 5A-C
+
+plotExcisedDataRegressions;
+
+%% Figure 6A-C
+
+plotNonConvexData;
+
+%% Figure 7A-J
 
 % This may be needed:
 cd('..')
@@ -68,7 +64,7 @@ for T = [2,6,8,10,13,14,15,16,20]
     close all
 end
 
-%% Figure 7
+%% Figures 8-9
 
 clearvars
 close all
@@ -80,42 +76,72 @@ load('./mats/allOutputs.mat')
 % changed by altering 'T = 20;' in ZOIdoseResponse.m:
 
 % These computations have already been done for various values of T and
-% it is much to quicker to load the results of those using the above load
-% command.
+% it is much to quicker to load the results of those using the above load command.
 
 %%
 
 % Once loaded, run these:
 
-%%
+%% Figure 8A-B
 
-% Figure 7A&B
-ZOIdoseReponse(output20);
-
-%%
-
-% Figure 7C
 close all
-processOutputs({output10,output13,output15,output20});
+clc
+ZOIdoseResponse(output20);
 
-%%
+%% Figure 8C
 
-% Figure 7D
 close all
-sl2 = processOutputs({output15part2},0);
-sl2.Color = [0        0.447        0.741];
-hold on
-[sl11,dash1] = processOutputs({output15},2);
-[sl12,dash2] = processOutputs({output15},3);
-sl12.HandleVisibility = 'off';
-sl11.HandleVisibility = 'on';
+processOutputsCell({output8,output9,output10,output11,output12,output13,output14,output15,output16,output17,output20});
+axis tight
 
-delete(sl12)
-sl11.LineWidth = 4;
-sl11.Color = 'k';
-dash1.Color = 'b';
-dash2.Color = 'r';
+exportgraphics(gcf,'./figures/transition.PDF')
 
-legend('location','southwest')
-axis([1e-5       3.6925      0.11507      0.83722])
+%% Figure 8D-E-F
+
+close all
+clc
+plotON = 1;
+plotOFF = 0;
+
+M = 50;
+Ns = [90 120 190];
+for j = 1:3
+    N = Ns(j);
+    close all
+    clc
+    [sl,dash1] = processOutputs({output18},2,plotON,'--',M,N);
+    [~,dash2] = processOutputs({output18},3,plotOFF,'-',M,N);
+    [~,dash3] = processOutputs({output18},4,plotOFF,'-',M,N);
+    
+    sl.Color = 'k';
+    dash1.Color = 'b';
+    dash2.Color = 'r';
+    dash3.Color = 'k';
+    ylim([0 1.2])
+    
+    exportgraphics(gcf,['./figures/regressionTransition',num2str(j),'.PDF'])
+end
+
+%% Figure 9A
+
+close all
+outputCell = {output20};
+sampleA0 = [0.0125 0.025 0.05 0.1 0.2 0.4 0.8 1.6 3.2];
+
+figure(1)
+thresholdedZOIdoseResponse(outputCell,0.35,sampleA0);
+ylim([0 1])
+axis tight
+
+exportgraphics(gcf,'./figures/CARSthresholdRegressions.PDF')
+
+%% Figure 9B
+
+close all
+figure(1)
+outputCell = {output11,output12,output13,output14,output15,output16,output17,output18,output19,output20};
+plotOFF = 0;
+thresholdedZOIdoseResponse(outputCell,0.35,[],plotOFF);
+
+exportgraphics(gcf,'./figures/CARSthresholdHysteresis.PDF')
 

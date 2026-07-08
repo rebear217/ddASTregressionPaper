@@ -1,9 +1,12 @@
-function MCMCanalysis(conc,zoi,func,iGuess,weights)
+function out = MCMCanalysis(conc,zoi,func,iGuess,weights,label)
+
+if nargin < 6
+    label = 'MIC';
+end
 
 data.ydata = conc;
 data.xdata = zoi;
-W = sqrt(weights(data.ydata));
-%W = ones(size(data.ydata));
+W = weights(data.ydata);
 
 modelfun = @(x,theta) func(theta,x);
 ssfun = @(theta,data) sum( (data.ydata - modelfun(data.xdata,theta)).^2 .* W );
@@ -16,16 +19,34 @@ options.nsimu = 200000;
 options.updatesigma = 1;
 options.burnintime = floor(options.nsimu/5);
 
+% MIC upper bound from data (assume MIC is below all concentrations where zoi data are +ve):
+Z = (zoi > 0);
+cZ = conc(Z);
+[~,ZeroJ] = min(zoi(Z));
+MICub = cZ(ZeroJ);
+% this is an assumption from EUCAST regulations (MICs are always above this value)
+MIClb = 2^(-9);
+
+%MICub = 2^9;
+%MIClb = 0;
+
 params = {};
-parameterList = {'MIC'};
+parameterList = {label};
 for j = 1:p
     parameterList{j+1} = ['p_',num2str(j)];
-    if j > 1
-        vardetails = {parameterList{j},iGuess(j), -10*abs(iGuess(j)), 10*abs(iGuess(j)), iGuess(j)};
+
+    if iGuess(j) > 0
+        lb = iGuess(j)/10;
+        ub = iGuess(j)*10;
     else
-        %vardetails = {parameterList{j},iGuess(j), 1.25, 2.5, iGuess(j)};
-        %replace 0 in here with 2^(-9)? Not worth it?
-        vardetails = {parameterList{j},iGuess(j), 0, 2^9, iGuess(j)};
+        ub = iGuess(j)/10;
+        lb = iGuess(j)*10;
+    end
+    
+    if j > 1
+        vardetails = {parameterList{j},iGuess(j), lb, ub, iGuess(j)};
+    else
+        vardetails = {parameterList{j},iGuess(j), MIClb, MICub, iGuess(j)};
     end
     params{j} = vardetails;
 end
@@ -45,9 +66,13 @@ figure(4); clf
 %mcmcplot(chain,[],[],'dens')
 %title('Error std posterior')
 mcmcplot(chain,1,res,'hist','kernel');
-xL = xlim;
-xlim([0 min([xL(2),4])]);
+%xL = xlim;
+axis tight
+%xlim([0 min([xL(2),4])]);
+xlim([MIClb MICub]);
+
 xlabel('estimated MICs (\mu g/mL)')
+ylabel('relative frequency')
 title('')
 
 figure(1); clf

@@ -1,147 +1,148 @@
-clear all
+clearvars
 close all
 clc
 
 gr = [1,1,1]/2;
+JACK = [0.2 0.5 0.2];
 
 %%
 
 clc
+%warning('off')
 
 %dataset 1 from https://europepmc.org/article/PMC/4576963, Table 1
-%dataset 3 from https://pmc.ncbi.nlm.nih.gov/articles/PMC5761473, Table 3
-dataLabels = {'ZoI data','ZoI data','ZoI data'};
 
-concs = {[0.625 , 0.312 , 0.156, 0.08, 0.04],[0.625 , 0.312 , 0.156],[2.56, 3.2, 4.0, 5.0 6.25]};
-zois = {[3.44 , 2.4 , 1.65, 1.2, 0.35],[3.44 , 2.6 , 1.85],[19.6, 21.8, 22.9, 24.5, 26.7]};
-stes = {[1 , 1 ,1, 1, 1]/10,[0.08 , 0.12 , 0.19],[1,1,1,1,1]/10};
-xlims = {[0.01 1.1],[0.01 1.1],[0.1 10]};
+conc = [0.625 , 0.312 , 0.156, 0.08, 0.04];
+zoi = [3.44 , 2.4 , 1.65, 1.2, 0.35];
+R = 0:0.001:4;
 
-b0bons = {[0.093048      -0.1587],[0.088749     -0.16473],[0.88613   -0.0028004],[0.74632    -0.003168]};
-b0expints = {[0.21149     0.062875  -2.3977e-12],[0.12871     0.087392  -3.2225e-13],[1.1478    0.0015803   7.4595e-11],[0.27383    0.0029442     -0.98827]};
-b0logs = {[-1.3212     0.061806     -0.70121],[-3.9648       0.4753    -0.020914],[-2.3013     0.011425      0.18092],[-4.8894     0.034636        1.287]};
+b0bon = [0.093048      -0.1587];
+b0expint = [0.037079     -0.11332      0.12774];
+b0log = [0   0.599      -4.15];
+Iguesses = {b0log,b0expint,b0bon};
 
-Rs = {0:0.001:4,0:0.001:4,0:0.001:30};
-ylabels = {'zone of inhibition radius (mm)','zone of inhibition radius (mm)','zone of inhibition diameter (mm)'};
-xlabels = {'erythromycin concentration (\mug/mL)','nisin concentration (\mug/mL)','Levofloxacin concentration (\mug/mL)'};
-N = 3;
-
+% this model is no longer used:
 %logF = @(p,r)abs(p(3)) + p(1)*exp((-1 + (1+p(2)*r.^2).^(1/2))/2 + ...
 %        log(((-1 + (1+p(2)*r.^2).^(1/2))))/2 + ...
 %        (p(2)/2)*r.^2./(-1 + (1+p(2)*r.^2).^(1/2)));
-logF = @(p,r)p(3) + exp(p(1) + sqrt(1+p(2).*r.^2 )) .* ( sqrt(1+p(2)*r.^2) );
-%logF = @(p,r)p(3) + exp(p(1) + p(2).*r) .* p(2).*r;
 
-expintF = @(b,r)(abs(b(3)) + b(1) ./ expint(abs(b(2))*r.^2));
-bonevF = @(p,r)p(1).*exp(-r.^2*p(2));
+% Here (due to difficulties getting convergence otherwise) ...
+% we constrain the frequentist 'fitnlm'approach to positive MIC values
+% using a smooth nonlinear function f(p(1))
+% MUST remember to take inverse if the parameter value p(1) is needed
+% variation/stats are therefore stated in terms of f(p(1)), not p(1) itself
 
-weights = @(yhat) 1./(1 + abs(yhat).^2);
-%weights = @(yhat) ones(size(yhat));
+MICfunc = @(p)log10(1+p^2);
+MICinversefunc = @(q)sqrt(10.^q-1);
 
-opt = statset('fitnlm');
-opt.MaxIter = 20000;
-opt.TolFun = 1e-10;
-opt.TolX = 1e-10;
+% These impose EUCAST bounds on MICs (but makes no practical difference)
+EUCASTMIClb = MICinversefunc(0); %this is zero
+EUCASTMICub = MICinversefunc(2^9); %this is massive, overflow? Yes: this is 'inf' in Matlab
 
-correctLo = @(m,s) m - 1.96*s;
-correctHi = @(m,s) m + 1.96*s;
+% Thus, this MIC nonlinear mapping approach cannot apply EUCAST bounds and
+% merely implies the MIC is positive, rather than bounded
 
-for D = 1:4
+logFmod = @(p,r)MICfunc(p(1)) + exp(p(3) + sqrt(1+abs(p(2)).*r.^2 )) .* ( -1 + sqrt(1+abs(p(2))*r.^2) );
+expintFmod = @(p,r)(MICfunc(p(1)) + p(3) ./ expint(abs(p(2))*r.^2));
+bonevFmod = @(p,r)MICfunc(p(1)).*exp(-r.^2*p(2));
+FmodelsMod = {logFmod,expintFmod,bonevFmod};
+
+logF = @(p,r)abs(p(1)) + exp(p(3) + sqrt(1+abs(p(2)).*r.^2 )) .* ( -1 + sqrt(1+abs(p(2))*r.^2) );
+expintF = @(p,r)(abs(p(1)) + p(3) ./ expint(abs(p(2))*r.^2));
+bonevF = @(p,r)abs(p(1)).*exp(-r.^2*p(2));
+Fmodels = {logF,expintF,bonevF};
+
+for pow = [0,1,2]
     
-    d = D;
-    if D == 4
-        d = 3;
-    end
+    close all
 
-    conc = concs{d};
-    zoi = zois{d};
-    ste = stes{d};
-
-    if D >= 4
-        conc = conc(1:end-1);
-        zoi = zoi(1:end-1);
-        ste = ste(1:end-1);
-    end
-
-    thisxlim = xlims{d};
-    b0log = b0logs{D};
-    b0expint = b0expints{D};
-    b0bon = b0bons{D};
-    R = Rs{d};
+    weights = @(yhat) 1./(abs(yhat).^pow);
+    %weights = @(yhat) ones(size(yhat));
     
-    if N > 1
-        conc = repmat(conc,N,1);
-        ste = ones(N,1)*ste;
-        ste = ste .* randn(size(ste));
-        zoi = repmat(zoi,N,1) + ste;
-    end
-
-    zoi = zoi(:);
-    conc = conc(:);
-
-    figure(D)
-
-    fitBon = fitnlm(zoi,conc,bonevF,b0bon,'Weights',weights,'Options',opt)
-    fitBon.Coefficients.Estimate'
-
-    fitEI = fitnlm(zoi,conc,expintF,b0expint,'Weights',weights,'Options',opt)
-    fitEI.Coefficients.Estimate'
-
-    fitlog = fitnlm(zoi,conc,logF,b0log,'Weights',weights,'Options',opt)
-    fitlog.Coefficients.Estimate'
-
-    fitLM = fitlm(zoi,log(conc),'Weights',weights(log(conc)));
+    opt = statset('fitnlm');
+    opt.MaxIter = 100000;
+    opt.TolFun = 1e-10;
+    opt.TolX = 1e-10;
     
-    semilogx(fitEI.feval(R),R,'-','linewidth',2,'color','b','DisplayName',['ExpInt (adj R^2\approx',num2str(fitEI.Rsquared.Adjusted),')'])
-    hold on
-    semilogx(fitlog.feval(R),R,'-','linewidth',2,'color','r','DisplayName',['Radical Exp (adj R^2\approx',num2str(fitlog.Rsquared.Adjusted),')'])
-    semilogx(fitBon.feval(R),R,'-','linewidth',2,'color','k','DisplayName',['Bonev (adj R^2\approx',num2str(fitBon.Rsquared.Adjusted),')'])
-    semilogx(exp(fitLM.feval(R)),R,'-','linewidth',2,'color',gr,'DisplayName',['Log-linear (adj R^2\approx',num2str(fitLM.Rsquared.Adjusted),')'])
-
-    %{
-    L1 = fitlog.Coefficients.Estimate(3) - 2*fitlog.Coefficients.SE(3);
-    L2 = fitlog.Coefficients.Estimate(3) + 2*fitlog.Coefficients.SE(3);
-    plot([L1,L2],[0,0],'-','linewidth',4,'color','r')
-    %}
-
-    L1 = fitBon.Coefficients.Estimate(1) - 1.96*fitBon.Coefficients.SE(1);
-    L2 = fitBon.Coefficients.Estimate(1) + 1.96*fitBon.Coefficients.SE(1);
-    %plot([L1,L2],[0,0],'-','linewidth',6,'color','k','DisplayName','Bonev MIC 95% CI')
-
-    L1 = correctLo(fitLM.Coefficients.Estimate(1),fitlog.Coefficients.SE(1));
-    L2 = correctHi(fitLM.Coefficients.Estimate(1),fitlog.Coefficients.SE(1));
-    %plot(exp([L1,L2]),[-0.2,-0.2],'-','linewidth',6,'color',gr,'DisplayName','Log-linear MIC 95% CI')
-
-    semilogx(conc,zoi,'.k','markersize',20,'DisplayName',dataLabels{d},'color',[1 1 1]*0.7)
-    semilogx(concs{d},zois{d},'.k','markersize',44,'DisplayName',[dataLabels{d},' replicate means'])
-
-    if D == 4
-        c = concs{d};
-        z = zois{d};
-
-        semilogx(c(end),z(end),'or','markersize',18,'DisplayName','excised datapoint')
-    end
-
-    if D == 4
-        %d == -1 never happens
-        L1 = correctLo(fitEI.Coefficients.Estimate(3),fitEI.Coefficients.SE(3));
-        L2 = correctHi(fitEI.Coefficients.Estimate(3),fitEI.Coefficients.SE(3));
-        %plot([L1,L2],[0.0,0.0],'-','linewidth',6,'color','b','DisplayName','ExpInt MIC 95% CI')
-
-        L1 = correctLo(fitlog.Coefficients.Estimate(3),fitlog.Coefficients.SE(3));
-        L2 = correctHi(fitlog.Coefficients.Estimate(3),fitlog.Coefficients.SE(3));
-        %plot([L1,L2],[0.6,0.6],'-','linewidth',6,'color','r','DisplayName','Radical Exp MIC 95% CI')
-    end    
-
-    legend('location','northwest')
-    axis tight
-    xlim(thisxlim)
-    ylim([0 R(end)])
-
-    xlabel(xlabels{d})
-    ylabel(ylabels{d})
+    correctLo = @(m,s) m - 1.96*s;
+    correctHi = @(m,s) m + 1.96*s;
     
-    figure(D)
-    exportgraphics(gcf,['./figures/ThreeModelCompareConvex',num2str(D),'.pdf'])
+    cols = {'r','b','k'};
+    labels = {'Radical Exp','ExpInt','Bonev'};
+    numbers = {'1st','2nd','3rd','4th','5th'};
+    
+    for ml = 1:3
+    
+        figure(ml)
+        semilogx(conc,zoi,'.k','markersize',44,'DisplayName','ZoI data')
+        hold on
+    
+        for D = 1:6
+    
+            if D == 6
+                concExcise = conc;
+                zoiExcise = zoi;
+                lw = 3;
+                lab = labels{ml};
+                col = cols{ml};
+            else
+                concExcise = setdiff(conc,conc(D));
+                zoiExcise = setdiff(zoi,zoi(D));
+                lw = 2;
+                lab = ['Jacknife ',numbers{D}];
+                col = JACK;
+            end    
+            
+            converged = 1;
+            try
+                %as convergence can be delicate, bail out if it fails:
+                fitModel = fitnlm(zoiExcise,concExcise,FmodelsMod{ml},Iguesses{ml},'Weights',weights,'Options',opt)
+                fitModel.Coefficients.Estimate'
+
+                semilogx(fitModel.feval(R),R,'-','linewidth',2,'color',col,'DisplayName',...
+                    [lab,' (adj R^2\approx',num2str(fitModel.Rsquared.Adjusted,2),')'],...
+                    'linewidth',lw)                
+            catch
+                converged = 0;
+            end
+            
+        end
+    
+        if D == 6
+            MIC = fitModel.feval(0);
+            text(0.25,0.5,['MIC\approx',num2str(MIC,2),'\mug/mL']);
+            Coefficients = fitModel.Coefficients.Estimate;
+
+            % use the MIC-transformed models in the MCMC:
+            %MMSEM = MCMCupdatePointEstimates(concExcise,zoiExcise,FmodelsMod{ml},...
+            %    Coefficients,weights,'f(MIC)',EUCASTMIClb,EUCASTMICub);
+
+            % do NOT use the MIC-transformed models in the MCMC:
+            Coefficients(1) = MICinversefunc(Coefficients(1));
+            MMSEM = MCMCupdatePointEstimates(concExcise,zoiExcise,Fmodels{ml},...
+                Coefficients,weights,'MIC',0,2^(9));
+        end
+    
+        if ml == 3
+            fitLM = fitlm(zoi,log(conc),'Weights',weights(conc));
+            semilogx(exp(fitLM.feval(R)),R,'-','linewidth',2,'color',[1,1,1]*0.5,...
+                'DisplayName',['Log-linear (adj R^2\approx',num2str(fitLM.Rsquared.Adjusted,2),')'])
+            MICllr = exp(fitLM.feval(0));
+            text(0.25,0.2,['LLR-MIC\approx',num2str(MICllr,2),'\mug/mL']);
+        end
+
+        legend('location','northwest')
+        axis tight
+        xlim([0.01 1.1])
+        ylim([0 4])        
+    
+        xlabel('erythromycin concentration (\mug/mL)');
+        ylabel('zone of inhibition radius (mm)');
+    
+        exportgraphics(gcf,['./figures/ThreeModelCompareConvex',num2str(ml),num2str(pow),'.pdf'])
+
+    end
 
 end
+
+%warning('on')
