@@ -1,9 +1,10 @@
 % This script plots all figures in the paper which can be done
-% by running the file one section at a time: (and do be sure to be in the right Matlab directory)
+% by un-commenting a line associated with that figure number and
+% running that section: (be sure to be in the right directory)
 
 % This must be installed for MCMC codes to work:
 % https://mjlaine.github.io/mcmcstat/
-% Do beware that this toolbox overwrites the "boxplot" command.
+% Beware that this toolbox overwrites the "boxplot" command.
 
 clearvars
 close all
@@ -124,6 +125,16 @@ end
 %% Figure 9A
 
 close all
+figure(1)
+outputCell = {output11,output12,output13,output14,output15,output16,output17,output18,output19,output20};
+plotOFF = 0;
+thresholdedZOIdoseResponse(outputCell,0.35,[],plotOFF);
+
+exportgraphics(gcf,'./figures/CARSthresholdHysteresis.PDF')
+
+%% Figure 9B
+
+close all
 outputCell = {output20};
 sampleA0 = [0.0125 0.025 0.05 0.1 0.2 0.4 0.8 1.6 3.2];
 
@@ -133,14 +144,4 @@ ylim([0 1])
 axis tight
 
 exportgraphics(gcf,'./figures/CARSthresholdRegressions.PDF')
-
-%% Figure 9B
-
-close all
-figure(1)
-outputCell = {output11,output12,output13,output14,output15,output16,output17,output18,output19,output20};
-plotOFF = 0;
-thresholdedZOIdoseResponse(outputCell,0.35,[],plotOFF);
-
-exportgraphics(gcf,'./figures/CARSthresholdHysteresis.PDF')
 
