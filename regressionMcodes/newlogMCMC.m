@@ -7,7 +7,8 @@ close all
 weights = @(yhat) 1./(abs(yhat).^2);
 b0 = [0.03 0.4 1.75];
 
-logF = @(p,r)p(1) + p(3)*exp(sqrt(1+p(2).*r.^2 )) .* ( -1 + sqrt(1+p(2)*r.^2) );
+%logF = @(p,r)p(1) + p(3)*exp(sqrt(1+p(2).*r.^2 )) .* ( -1 + sqrt(1+p(2)*r.^2) );
+logF = @(p,r)p(1) + exp(p(3) + sqrt(1+p(2).*r.^2 )) .* ( -1 + sqrt(1+p(2)*r.^2) );
 
 fit = fitnlm(zoi(1:end-2),conc(1:end-2),logF,b0,'Weights',weights)
 out = MCMCanalysis(conc(1:end-2),zoi(1:end-2),logF,fit.Coefficients.Estimate,weights);

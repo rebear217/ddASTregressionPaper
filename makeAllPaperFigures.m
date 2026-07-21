@@ -30,18 +30,18 @@ plotNewLogModel;
 % the 3 sections above must be run first before this will work:
 plotFit3;
 
-%% Figure 4A
+%% Figure 4A-B
 % To test this works, open "MCMCanalysis.m" and change the line
 % options.nsimu = 200000; to something with a smaller value, like...
 % options.nsimu = 2000;
 
 bonevMCMC;
 
-%% Figure 4B
+%% Figure 4C-D
 
 expintMCMC;
 
-%% Figure 4C
+%% Figure 4E-F
 
 newlogMCMC;
 
