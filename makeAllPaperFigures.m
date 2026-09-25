@@ -24,7 +24,7 @@ plotBonevModel;
 plotExpIntModel;
 
 %% Figures 2C&3C
-plotNewLogModel;
+plotRadicalExpModel;
 
 %% Figures 2D&3D
 % the 3 sections above must be run first before this will work:
@@ -43,15 +43,20 @@ expintMCMC;
 
 %% Figure 4E-F
 
-newlogMCMC;
+radicalExpMCMC;
 
 %% Figure 5A-C
+% This now uses - MCMC lower bound on the MIC: MIClb = 0 (it was 2^(-9));
 
 plotExcisedDataRegressions;
 
 %% Figure 6A-C
 
 plotNonConvexData;
+
+%% copies PDF files and gives them more useful names for latex editing
+
+makePaperPDFfiles;
 
 %% Figure 7A-J
 

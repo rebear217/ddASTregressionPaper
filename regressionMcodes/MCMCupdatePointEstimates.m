@@ -11,7 +11,7 @@ function MMSEM = MCMCupdatePointEstimates(conc,zoi,func,iGuess,weights,label,MIC
     end
     
     %{
-    % MIC prior bounds from data (assume MIC is below all concenrations where zoi data are +ve):
+    % MIC prior bounds from data (assume MIC is below all concentrations where zoi data are +ve):
     Z = (zoi > 0);
     cZ = conc(Z);
     [~,ZeroJ] = min(zoi(Z));
@@ -19,17 +19,24 @@ function MMSEM = MCMCupdatePointEstimates(conc,zoi,func,iGuess,weights,label,MIC
     % this is an assumption from EUCAST regulations (MICs are always above this value)
     MIClb = 2^(-9);
     %}
-    
+
     data.ydata = conc;
     data.xdata = zoi;
-    W = weights(data.ydata);
     
     modelfun = @(x,theta) func(theta,x);
-    ssfun = @(theta,data) sum( (data.ydata - modelfun(data.xdata,theta)).^2 .* W );
+    ssfun = @(theta,data) sum( (data.ydata - modelfun(data.xdata,theta)).^2 .* weights );
     
     p = length(iGuess);
     n = length(data.xdata);
     
+    % This next check is done just in case an iGuess (a starting solution coming from fitnlm) has a
+    % non-ideal neg/positivity pattern in some of its elements for the fit function
+    % in use (func). This happens when fitnlm didn't converge to the solution with the right
+    % sign (which is a design feature of the code to give fitnlm a greater likelihood of convergence
+    % to some solution). This code snippet "corrects" that pattern before the MCMC is run:
+    % (But in practice, none of the entries in iGuess are changed.)
+    iGuess = enforcePositivityPatttern(iGuess,func);
+
     model.ssfun  = ssfun;
     options.nsimu = 20000;
     options.updatesigma = 1;
@@ -61,7 +68,7 @@ function MMSEM = MCMCupdatePointEstimates(conc,zoi,func,iGuess,weights,label,MIC
     
     chain = chain(options.burnintime:end,:);
     s2chain = s2chain(options.burnintime:end,:);
-    x = (0:0.1:(max(data.xdata)+2))';
+    x = (0:0.01:(max(data.xdata)+2))';
     
     %{
     figure(2); clf

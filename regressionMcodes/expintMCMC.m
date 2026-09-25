@@ -3,15 +3,12 @@ close all
 
 %%  data from literature
 [conc,zoi,~] = defineMicrococcusNisinData();
+fexpint = @expintFunction;
 
-I = @(x)exp(-x)./x;
-
-myGamma = @(a)integral(I,a,inf);
 weights = @(yhat) 1./(abs(yhat).^2);
-fexpint = @(b,r)(b(1) + b(3) ./ expint(b(2)*r.^2));
 
-fit = fitnlm(zoi(1:end-2),conc(1:end-2),fexpint,[0.5 0.02 1],'Weights',weights)
-out = MCMCanalysis(conc(1:end-2),zoi(1:end-2),fexpint,fit.Coefficients.Estimate,weights);
+fit = fitnlm(zoi(1:end-2),conc(1:end-2),fexpint,[0.5 0.02 1],'Weights',weights(conc(1:end-2)))
+out = MCMCanalysis(conc(1:end-2),zoi(1:end-2),fexpint,fit.Coefficients.Estimate,weights(conc(1:end-2)));
 
 figure(5)
 semilogy(zoi,conc,'.k','markersize',30,'HandleVisibility','off');

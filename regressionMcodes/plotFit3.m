@@ -14,25 +14,26 @@ correctHi = @(m,s) m + 1.96*abs(s);
 % logF = @(p,r)p(3) + p(1)*exp((-1 + (1+p(2)*r.^2).^(1/2))/2 + ...
 %        log(((-1 + (1+p(2)*r.^2).^(1/2))))/2 + ...
 %        (p(2)/2)*r.^2./(-1 + (1+p(2)*r.^2).^(1/2)));
+% this is no longer used (11/9/2026)
 
-% radical new version:
-logF = @(p,r)p(1) + exp(p(3) + sqrt(1+abs(p(2)).*r.^2 )) .* ( -1 + sqrt(1+abs(p(2))*r.^2) );
+% radical exp model:
+expRad = @exponentialRadical;
 b0F = [1.8 0.024 -2];
 
 % expint function
-fexpint = @(b,r)(b(1) + b(3) ./ expint(abs(b(2))*r.^2));
+fexpint = @expintFunction;
 b0ei = [1 0.02 2];
 
 % bonev function
-bonevF = @(p,r)p(1).*exp(-r.^2*p(2));
+bonevF = @bonevFunction;
 b0b = [2 -0.03];
 
 weights = @(yhat) 1./(abs(yhat).^2);
 
 S = 1;
-fitF = fitnlm(zoi(S:end-2),conc(S:end-2),logF,b0F,'Weights',weights)
-fitEI = fitnlm(zoi(S:end-2),conc(S:end-2),fexpint,b0ei,'Weights',weights)
-fitB = fitnlm(zoi(S:end-2),conc(S:end-2),bonevF,b0b,'Weights',weights)
+fitF = fitnlm(zoi(S:end-2),conc(S:end-2),expRad,b0F,'Weights',weights(conc(S:end-2)))
+fitEI = fitnlm(zoi(S:end-2),conc(S:end-2),fexpint,b0ei,'Weights',weights(conc(S:end-2)))
+fitB = fitnlm(zoi(S:end-2),conc(S:end-2),bonevF,b0b,'Weights',weights(conc(S:end-2)))
 fitLM = fitlm(zoi(S:end-2),log(conc(S:end-2)),'Weights',weights(conc(S:end-2)))
 
 figure(1)
@@ -96,10 +97,10 @@ exportgraphics(gcf,'./figures/3ModelCompare1.pdf')
 
 [conc,zoi,R] = defineSarcinaCloxData();
 
-fitF = fitnlm(zoi,conc,logF,[0.09 0.04 1.85],'Weights',weights)
-fitEI = fitnlm(zoi,conc,fexpint,[0.5 0.02 1],'Weights',weights)
-fitB = fitnlm(zoi,conc,bonevF,[1 0],'Weights',weights)
-fitLM = fitlm(zoi,log(conc),'Weights',weights((conc)))
+fitF = fitnlm(zoi,conc,expRad,[0.09 0.04 1.85],'Weights',weights(conc))
+fitEI = fitnlm(zoi,conc,fexpint,[0.5 0.02 1],'Weights',weights(conc))
+fitB = fitnlm(zoi,conc,bonevF,[1 0],'Weights',weights(conc))
+fitLM = fitlm(zoi,log(conc),'Weights',weights(conc))
 
 figure(2)
 set(2,'pos',[543   761   643   421])

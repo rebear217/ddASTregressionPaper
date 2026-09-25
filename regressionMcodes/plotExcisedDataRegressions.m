@@ -3,45 +3,38 @@ close all
 clc
 
 gr = [1,1,1]/2;
-JACK = [0.2 0.5 0.2];
+JACKcolour = [0.2 0.5 0.2];
 
 %%
 
 clc
 
 % dataset: https://pmc.ncbi.nlm.nih.gov/articles/PMC5761473, Table 3
-
 conc = [2.56, 3.2, 4.0, 5.0 6.25];
 zoi = [19.6, 21.8, 22.9, 24.5, 26.7];
-%ste = [1,1,1,1,1]/10;
+
 xL = [0.05 10];
 R = 0:0.001:28;
 
-%N = 3;
+radExpF = @exponentialRadical;
+expintF = @expintFunction;
+bonevF = @bonevFunction;
+Fmodels = {radExpF,expintF,bonevF};
 
-% this model is no longer used:
-%logF = @(p,r)abs(p(3)) + p(1)*exp((-1 + (1+p(2)*r.^2).^(1/2))/2 + ...
-%        log(((-1 + (1+p(2)*r.^2).^(1/2))))/2 + ...
-%        (p(2)/2)*r.^2./(-1 + (1+p(2)*r.^2).^(1/2)));
-
-% Due to difficulties getting convergence here we constrain to positive
+% Due to difficulties getting fitlm convergence, here we constrain to positive
 % MICvalues using the smooth nonlinear term MIC = p(1)^2:
-% remember to take square roots later if the parameter value is needed
+% remember to take square roots later if the MIC parameter value is
+% needed...:
+sqP = @(p)[p(1)^2,p(2:end)];
+radExpFsquared = @(p,r)radExpF(sqP(p),r);
+expintFsquared = @(p,r)expintF(sqP(p),r);
+bonevFsquared = @(p,r)bonevF(sqP(p),r);
+FmodelsSquared = {radExpFsquared,expintFsquared,bonevFsquared};
 
-logFsquared = @(p,r)p(1)^2 + exp(p(3) + sqrt(1+abs(p(2)).*r.^2 )) .* ( -1 + sqrt(1+abs(p(2))*r.^2) );
-expintFsquared = @(p,r)(p(1)^2 + p(3) ./ expint(abs(p(2))*r.^2));
-bonevFsquared = @(p,r)(p(1)^2).*exp(-r.^2*p(2));
-FmodelsSquared = {logFsquared,expintFsquared,bonevFsquared};
-
-logF = @(p,r)p(1) + exp(p(3) + sqrt(1+abs(p(2)).*r.^2 )) .* ( -1 + sqrt(1+abs(p(2))*r.^2) );
-expintF = @(p,r)(p(1) + p(3) ./ expint(abs(p(2))*r.^2));
-bonevF = @(p,r)p(1).*exp(-r.^2*p(2));
-Fmodels = {logF,expintF,bonevF};
-
-p0log = [0.46585    0.0070733      -1.0188];
+p0radExp = [0.46585    0.0070733      -1.0188];
 p0expint = [0.46585    0.0015803   1.1478];
-p0bon = [1   -0.0028004];
-Iguesses = {p0log,p0expint,p0bon};
+p0bonev = [1   -0.0028004];
+Iguesses = {p0radExp,p0expint,p0bonev};
 
 weights = @(yhat) 1./(abs(yhat).^2);
 
@@ -80,14 +73,18 @@ for ml = 1:3
             lab = labels{ml};
             col = cols{ml};
         else
-            concExcise = setdiff(conc,conc(D));
-            zoiExcise = setdiff(zoi,zoi(D));
+            %concExcise = setdiff(conc,conc(D));
+            %zoiExcise = setdiff(zoi,zoi(D));
+            concExcise = myRemoveDatum(conc,conc(D));
+            zoiExcise = myRemoveDatum(zoi,zoi(D));
+            
             lw = 2;
-            lab = ['Jacknife ',numbers{D}];
-            col = JACK;
+            lab = ['Jackknife ',numbers{D}];
+            col = JACKcolour;
         end
     
-        fitModel = fitnlm(zoiExcise,concExcise,FmodelsSquared{ml},Iguesses{ml},'Weights',weights,'Options',opt)
+        fitModel = fitnlm(zoiExcise,concExcise,FmodelsSquared{ml},Iguesses{ml},'Weights',...
+            weights(concExcise),'Options',opt)
         fitModel.Coefficients.Estimate'
         
         semilogx(fitModel.feval(R),R,'-','linewidth',2,'color',col,'DisplayName',...
@@ -97,17 +94,17 @@ for ml = 1:3
 
         if D == 6
             MIC = fitModel.feval(0);
-            %MMSEM = MCMCupdatePointEstimates(concExcise,zoiExcise,Fmodels{ml},Iguesses{ml},weights);
             Coefficients = fitModel.Coefficients.Estimate;
 
-            % use MCMC with the MIC-transformed version:
-            %MMSEM = MCMCupdatePointEstimates(concExcise,zoiExcise,FmodelsSquared{ml},Coefficients,...
-            %    weights,'MIC',sqrt(2^(-9)),sqrt(2^9));
-
-            % use MCMC without the MIC-transformed version:
-            Coefficients(1) = sqrt(Coefficients(1));
+            % use MCMC WITHOUT the MIC-transformed version:
+            Coefficients(1) = sqrt(abs(Coefficients(1)));
+            
+            % MCMC lower bound on the MIC:
+            MIClb = 0;
+            % MCMC upper bound on the MIC:
+            MICub = 2^9;
             MMSEM = MCMCupdatePointEstimates(concExcise,zoiExcise,Fmodels{ml},Coefficients,...
-                weights,'MIC',2^(-9),2^9);
+                weights(concExcise),'MIC',MIClb,MICub);
         end
         
     end

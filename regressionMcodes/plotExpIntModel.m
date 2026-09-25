@@ -2,7 +2,8 @@
 close all
 clc
 
-JACK = [0.2 0.5 0.2];
+JACKcolour = [0.2 0.5 0.2];
+fexpint = @expintFunction;
 
 %%  data from literature
 
@@ -11,21 +12,7 @@ JACK = [0.2 0.5 0.2];
 
 [conc,zoi,R] = defineMicrococcusNisinData();
 
-I = @(x)exp(-x)./x;
-
-myGamma = @(a)integral(I,a,inf);
-%c0 = 0.5; c1 = 0.02;
-
-Esub = @(r)(exp(-r).*log(1+1./r));
-Esuper = @(r)(0.5*exp(-r).*log(1+2./r));
-
-fexpint = @(b,r)(abs(b(1)) + b(3) ./ expint(abs(b(2))*r.^2));
-fsuper = @(b,r)(abs(b(1)) + b(3) ./ Esuper(abs(b(2))*r.^2));
-fsub = @(b,r)(abs(b(1)) + b(3) ./ Esub(abs(b(2))*r.^2));
 pGuess = [1 0.02 0.5];
-
-%fexpint = @(b,r)abs(b(3)) + b(1).*(log(abs(r./b(2)))).^(1/2)
-
 weights = @(yhat) 1./(abs(yhat).^2);
 %weights = @(yhat) ones(size(yhat));
 %weights = @(yhat) 1./(1 + abs(yhat).^3);
@@ -36,18 +23,21 @@ disp('Figure 3B')
 semilogx(conc,zoi,'.k','markersize',34,'DisplayName','ZoI data')
 hold on
 
-fitAll = fitnlm(zoi(1:end-2),conc(1:end-2),fexpint,pGuess,'Weights',weights)
+fitAll = fitnlm(zoi(1:end-2),conc(1:end-2),fexpint,pGuess,'Weights',weights(conc(1:end-2)))
 %fit1 = fitnlm(zoi,conc,fexpint,[0.5 0.02 1],'Weights',weights)
 %fit2 = fitnlm(zoi,conc,fexpint,[0.5 0.02 1],'Weights',weights)
+
 M = 1;
 for j = M:9
-    Z = setdiff(zoi(M:end-2),zoi(j));
-    C = setdiff(conc(M:end-2),conc(j));
-    fit0 = fitnlm(Z,C,fexpint,fitAll.Coefficients.Estimate,'Weights',weights);   
+    %Jackknife regressions:
+    Z = myRemoveDatum(zoi(M:end-2),zoi(j));
+    C = myRemoveDatum(conc(M:end-2),conc(j));
+
+    fit0 = fitnlm(Z,C,fexpint,fitAll.Coefficients.Estimate,'Weights',weights(C));   
     if j == M
-        plot(fit0.feval(R),R,'-','DisplayName','Jacknife frequentist fits','linewidth',2,'color',JACK)
+        plot(fit0.feval(R),R,'-','DisplayName','Jackknife frequentist fits','linewidth',2,'color',JACKcolour)
     else
-        plot(fit0.feval(R),R,'-','linewidth',2,'color',JACK,'HandleVisibility','off')
+        plot(fit0.feval(R),R,'-','linewidth',2,'color',JACKcolour,'HandleVisibility','off')
     end
 end
 
@@ -66,7 +56,8 @@ W2 = conc(end-1);
 plot([W1,W2],[0,0],'-k','linewidth',6,'DisplayName','MIC ground truth (W)');
 text(0.8,0.5,'W','FontSize',22);
 
-MMSEMmicroNisinExpInt = MCMCupdatePointEstimates(conc(1:end-2),zoi(1:end-2),fexpint,fitAll.Coefficients.Estimate,weights);
+MMSEMmicroNisinExpInt = MCMCupdatePointEstimates(conc(1:end-2),zoi(1:end-2),fexpint,...
+    fitAll.Coefficients.Estimate,weights(conc(1:end-2)));
 
 ylabel('r (mm)')
 xlabel('antibiotic dose (\mug/mL)')
@@ -79,7 +70,7 @@ set(gca,'Ytick',0:1:max(R))
 
 [conc,zoi,R] = defineSarcinaCloxData();
 
-fit = fitnlm(zoi,conc,fexpint,pGuess,'Weights',weights)
+fit = fitnlm(zoi,conc,fexpint,pGuess,'Weights',weights(conc))
 
 figure(2)
 disp('Figure 2B')
@@ -89,13 +80,14 @@ hold on
 set(gca,'Ytick',0:5:max(R))
 
 for j = 1:5
-    Z = setdiff(zoi,zoi(j));
-    C = setdiff(conc,conc(j));
-    fitJ = fitnlm(Z,C,fexpint,fit.Coefficients.Estimate,'Weights',weights);   
+    %Jackknife regressions:
+    Z = myRemoveDatum(zoi,zoi(j));
+    C = myRemoveDatum(conc,conc(j));
+    fitJ = fitnlm(Z,C,fexpint,fit.Coefficients.Estimate,'Weights',weights(C));   
     if j == 1
-        plot(fitJ.feval(R),R,'-','DisplayName','Jacknife frequentist fits','linewidth',2,'color',JACK)
+        plot(fitJ.feval(R),R,'-','DisplayName','Jackknife frequentist fits','linewidth',2,'color',JACKcolour)
     else
-        plot(fitJ.feval(R),R,'-','linewidth',2,'color',JACK,'HandleVisibility','off')
+        plot(fitJ.feval(R),R,'-','linewidth',2,'color',JACKcolour,'HandleVisibility','off')
     end
 end
 
@@ -106,7 +98,8 @@ semilogx(conc,zoi,'.k','markersize',34,'HandleVisibility','off')
 MIC = abs(fit.Coefficients.Estimate(1));
 text(20,5,['MIC\approx',num2str(MIC,3),'\mug/mL']);
 
-MMSEMsarcinaCloxExpInt = MCMCupdatePointEstimates(conc,zoi,fexpint,fit.Coefficients.Estimate,weights);
+MMSEMsarcinaCloxExpInt = MCMCupdatePointEstimates(conc,zoi,fexpint,...
+    fit.Coefficients.Estimate,weights(conc));
 
 ylabel('r (mm)')
 xlabel('antibiotic dose (\mug/mL)')

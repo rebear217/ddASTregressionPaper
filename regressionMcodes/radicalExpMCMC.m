@@ -3,30 +3,34 @@ close all
 
 %%  data from literature
 [conc,zoi,~] = defineMicrococcusNisinData();
-
-bonevF = @bonevFunction;
-b0 = [1 0];
+expRad = @exponentialRadical;
 
 weights = @(yhat) 1./(abs(yhat).^2);
+b0 = [0.03 0.4 1.75];
 
-fit = fitnlm(zoi(1:end-2),conc(1:end-2),bonevF,b0,'Weights',weights(conc(1:end-2)))
-out = MCMCanalysis(conc(1:end-2),zoi(1:end-2),bonevF,fit.Coefficients.Estimate,weights(conc(1:end-2)));
+fit = fitnlm(zoi(1:end-2),conc(1:end-2),expRad,b0,'Weights',weights(conc(1:end-2)))
+out = MCMCanalysis(conc(1:end-2),zoi(1:end-2),expRad,fit.Coefficients.Estimate,weights(conc(1:end-2)));
 
 figure(5)
 semilogy(zoi,conc,'.k','markersize',30,'HandleVisibility','off');
 
 figure(6)
-MCMCshadedPlot(out,conc,zoi,'k');
+MCMCshadedPlot(out,conc,zoi,'r');
 
 %%
 
 for j = [1 2 3 4 5 6]
     figure(j)
     if j == 4
-        %subplot(2,1,1);
+        %subplot(2,2,1);
         hold on
         plot([0.625,1.25],[0,0],'-k','LineWidth',4)
         text(0.8,0.1,'W','Color','k','FontSize',25)
+    end
+    if j == 5
+        ylim([0.4 90])
+        xlim([0 11])        
+        title('Predictive envelopes of the radical exponential model')
     end
     if j == 6
         hold on
@@ -34,12 +38,8 @@ for j = [1 2 3 4 5 6]
         text(0.75,0.5,'W','Color','k','FontSize',25)
         xlim([0.1 140])
         MIC = fit.Coefficients.Estimate(1);
-        text(10,3,['MIC\approx',num2str(MIC,3),'\mug/mL']);
-    end
-    
-    if j == 5
-        title('Predictive envelopes of the Bonev model')
+        text(10,3,['MIC\approx',num2str(MIC,3),'\mug/mL']); 
     end
 
-    exportgraphics(gcf,['./figures/BonevMCMC',num2str(j),'200k.pdf']);
+    exportgraphics(gcf,['./figures/radicalExpMCMC',num2str(j),'200k.pdf']);
 end
