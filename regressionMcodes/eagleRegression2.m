@@ -1,4 +1,4 @@
-%% 
+%% THIS FUNCTION IS NOT USED IN THE ARTICLE
 
 clearvars
 close all

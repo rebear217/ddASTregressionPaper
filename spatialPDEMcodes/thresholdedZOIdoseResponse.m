@@ -85,7 +85,7 @@ function thresholdedZOIdoseResponse(outputTcell,threshold,sampleA0,fitFlag)
                     p0 = p0(1:2);
                 end
                 fitZ = Zfunction(Zj);
-                fit = fitnlm(sampleZOI,sampleA0,fitZ,p0,'Weights',weight)
+                fit = fitnlm(sampleZOI,sampleA0,fitZ,p0,'Weights',weight(sampleA0))
                 rPlot = 0:0.01:max(1.1*sampleZOI);
                 adjR2 = fit.Rsquared.Adjusted;
                 plot(fit.feval(rPlot),rPlot,'-k','DisplayName',...

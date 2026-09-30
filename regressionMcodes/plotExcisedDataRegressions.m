@@ -96,9 +96,9 @@ for ml = 1:3
             MIC = fitModel.feval(0);
             Coefficients = fitModel.Coefficients.Estimate;
 
-            % use MCMC WITHOUT the MIC-transformed version:
-            Coefficients(1) = sqrt(abs(Coefficients(1)));
-            
+            % use MCMC WITHOUT the MIC-transformed formulation:
+            Coefficients = sqP(Coefficients')';
+
             % MCMC lower bound on the MIC:
             MIClb = 0;
             % MCMC upper bound on the MIC:

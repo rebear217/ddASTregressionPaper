@@ -27,14 +27,14 @@ fitAll = fitnlm(zoi(1:end-2),conc(1:end-2),fexpint,pGuess,'Weights',weights(conc
 %fit1 = fitnlm(zoi,conc,fexpint,[0.5 0.02 1],'Weights',weights)
 %fit2 = fitnlm(zoi,conc,fexpint,[0.5 0.02 1],'Weights',weights)
 
-M = 1;
-for j = M:9
+Nz = length(zoi(1:end-2));
+for j = 1:Nz
     %Jackknife regressions:
-    Z = myRemoveDatum(zoi(M:end-2),zoi(j));
-    C = myRemoveDatum(conc(M:end-2),conc(j));
+    Z = myRemoveDatum(zoi(1:end-2),zoi(j));
+    C = myRemoveDatum(conc(1:end-2),conc(j));
 
     fit0 = fitnlm(Z,C,fexpint,fitAll.Coefficients.Estimate,'Weights',weights(C));   
-    if j == M
+    if j == 1
         plot(fit0.feval(R),R,'-','DisplayName','Jackknife frequentist fits','linewidth',2,'color',JACKcolour)
     else
         plot(fit0.feval(R),R,'-','linewidth',2,'color',JACKcolour,'HandleVisibility','off')
@@ -79,7 +79,7 @@ semilogx(conc,zoi,'.k','markersize',38,'DisplayName','ZoI data')
 hold on
 set(gca,'Ytick',0:5:max(R))
 
-for j = 1:5
+for j = 1:length(zoi)
     %Jackknife regressions:
     Z = myRemoveDatum(zoi,zoi(j));
     C = myRemoveDatum(conc,conc(j));

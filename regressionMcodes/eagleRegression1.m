@@ -1,3 +1,5 @@
+%% THIS FUNCTION IS NOT USED IN THE ARTICLE
+
 clc
 close all
 clearvars

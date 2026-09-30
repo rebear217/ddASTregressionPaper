@@ -109,7 +109,8 @@ for pow = [0,1,2]
             Coefficients = fitModel.Coefficients.Estimate;
 
             % do NOT use the MIC-transformed models in the MCMC:
-            Coefficients(1) = MICinversefunc(Coefficients(1));
+            Coefficients = MIF(Coefficients')';
+
             MMSEM = MCMCupdatePointEstimates(concExcise,zoiExcise,Fmodels{ml},...
                 Coefficients,weights(concExcise),'MIC',0,2^(9));
         end

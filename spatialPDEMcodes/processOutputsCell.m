@@ -53,12 +53,13 @@ function [sl,sl2] = processOutputsCell(inputs,modelflag,plotflag)
         ps = 0.000:1e-4:1.3*max(popSize);
         if modelflag > 0
             if modelflag < 4
-                fitDR = fitnlm(popSize,A0s(1:N),@(par,Pop)DR(par,Pop,modelflag),p0,'Weights',weight)
+                fitDR = fitnlm(popSize,A0s(1:N),@(par,Pop)DR(par,Pop,modelflag),p0,...
+                    'Weights',weight(A0s(1:N)))
                 sl2 = plot(fitDR.feval(ps),ps,'-','DisplayName',...
                     [fitLab,' fit (adj R^2\approx ',num2str(fitDR.Rsquared.Adjusted,3),')'],'LineWidth',3);
                 %p = fitDR.Coefficients.Estimate;
             else
-                fitDR = fitlm(log(A0s(1:N)),popSize,'Weights',weight)
+                fitDR = fitlm(log(A0s(1:N)),popSize,'Weights',weight(A0s(1:N)))
                 sl2 = plot(A0s,fitDR.feval(log(A0s)),'-','DisplayName',...
                     [fitLab,' fit (adj R^2\approx ',num2str(fitDR.Rsquared.Adjusted,3),')'],'LineWidth',3);            
             end

@@ -58,11 +58,11 @@ plotNonConvexData;
 
 makePaperPDFfiles;
 
-%% Figure 7A-J
-
-% This may be needed:
+%% This may be needed to change directory:
 cd('..')
 cd('spatialPDEMcodes/')
+
+%% Figure 7A-J
 
 for T = [2,6,8,10,13,14,15,16,20]
     outputT = timesolvePanel(T);
@@ -149,4 +149,8 @@ ylim([0 1])
 axis tight
 
 exportgraphics(gcf,'./figures/CARSthresholdRegressions.PDF')
+
+%%
+
+makePaperPDFfiles2;
 

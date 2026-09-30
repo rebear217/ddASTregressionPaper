@@ -58,7 +58,8 @@ for j = 1:length(inputs)
     ps = 0.000:1e-4:1.3*max(popSize);
     if modelflag > 0
         if modelflag < 4
-            fitDR = fitnlm(popSize,A0s(M:N),@(par,Pop)DR(par,Pop,modelflag),p0,'Weights',weight)
+            fitDR = fitnlm(popSize,A0s(M:N),@(par,Pop)DR(par,Pop,modelflag),p0,...
+                'Weights',weight(A0s(M:N)))
             sl2 = plot(fitDR.feval(ps),ps,'-','DisplayName',...
                 [fitLab,' fit (adj R^2\approx ',num2str(fitDR.Rsquared.Adjusted,3),')'],'LineWidth',3);
             %p = fitDR.Coefficients.Estimate;

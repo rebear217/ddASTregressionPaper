@@ -31,6 +31,7 @@ b0b = [2 -0.03];
 weights = @(yhat) 1./(abs(yhat).^2);
 
 S = 1;
+%these remove the repeated r=0 datapoints:
 fitF = fitnlm(zoi(S:end-2),conc(S:end-2),expRad,b0F,'Weights',weights(conc(S:end-2)))
 fitEI = fitnlm(zoi(S:end-2),conc(S:end-2),fexpint,b0ei,'Weights',weights(conc(S:end-2)))
 fitB = fitnlm(zoi(S:end-2),conc(S:end-2),bonevF,b0b,'Weights',weights(conc(S:end-2)))

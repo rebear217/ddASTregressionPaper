@@ -29,6 +29,11 @@ N = length(newNamesREG);
 for j = 1:N
     srcfile = ['./figures/',oldNamesREG{j},'.pdf'];
     destfile = ['./paperfigures/Figure',newNamesREG{j},'.pdf'];
-    movefile(srcfile,destfile);
+    try
+        movefile(srcfile,destfile);
+        disp(['file moved: ',srcfile])
+    catch
+        disp(['file not found error: ',srcfile])
+    end
 end
 
